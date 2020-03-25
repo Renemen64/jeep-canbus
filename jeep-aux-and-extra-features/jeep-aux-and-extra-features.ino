@@ -39,7 +39,7 @@
 #define ANNOUNCE_PERIOD_MS 1000
 #define SLEEP_PERIOD_MS 10000 // time to sleep after last can messege
 #define BUTTON_PRESS_DEBOUNCE_MS 250
-#define AVC_DIVIDER 24
+#define AVC_DIVIDER 19
 #define DBG_CAN_ON  // Send all CAN data to serial port
 //#define BENCH_MODE_ON // When radio is removed from the car it needs to receive power-on message regularly so it thinks key is on
 
@@ -233,6 +233,7 @@ void checkIncomingMessages() {
       case CAN_VEHICLE:
         // engineRpm = (can_MsgRx.data[0] << 8) + can_MsgRx.data[1];
         carSpeed = ((buf[2] << 8) + buf[3]) >> 7;
+        if (powerOn) volumeCtrl();
         break;
     }
 #ifdef DBG_CAN_ON
@@ -254,17 +255,17 @@ void checkIncomingMessages() {
 void volumeCtrl () {
   if (radioAVC < (carSpeed / AVC_DIVIDER)) {
     Serial.print ("\tAVC\t"); Serial.print (radioAVC); Serial.println ("\tVOL+");
-    CAN.sendMsgBuf(CAN_WHEEL_BUTTONS, 0, 2, setRadioVolUp);
-    delay(150);
-    CAN.sendMsgBuf(CAN_WHEEL_BUTTONS, 0, 2, setWheelBtnOk);
-    delay(20);
+    CAN.sendMsgBuf(CAN_WHEEL_BUTTONS, 0, 2, setRadioVolUp); //simulate a button press on the steering wheel
+    delay(125);
+    CAN.sendMsgBuf(CAN_WHEEL_BUTTONS, 0, 2, setWheelBtnOk); //simulate a button release
+    delay (10);
   }
   else if (radioAVC > (carSpeed / AVC_DIVIDER)) {
     Serial.print ("\tAVC\t"); Serial.print (radioAVC); Serial.println ("\tVOL-");
     CAN.sendMsgBuf(CAN_WHEEL_BUTTONS, 0, 2, setRadioVolDn);
-    delay(150);
+    delay(125);
     CAN.sendMsgBuf(CAN_WHEEL_BUTTONS, 0, 2, setWheelBtnOk);
-    delay(20);
+    delay (10);
   }
   radioAVC = carSpeed / AVC_DIVIDER;
 }
@@ -334,19 +335,16 @@ void loop() {
     // tell them VES AUX is here then CAN bus not sleep
     if (enableVES) {
       CAN.sendMsgBuf(CAN_VES_UNIT, 0, arrayLenght(msgVesAuxMode), msgVesAuxMode);
-      //delay (25);
+      delay (10);
       //CAN.sendMsgBuf(CAN_WHEEL_BUTTONS, 0, 2, setWheelBtnOk);  // uncoment this if not have steering wheel control buttons
-      //delay (25);
+      //delay (10);
       enableVES = false;
-      if (powerOn) {
-        digitalWrite(BLUETOOTH_SWITCH, LOW);
-        volumeCtrl();
-      }
+      if (powerOn) digitalWrite(BLUETOOTH_SWITCH, LOW);
       else digitalWrite(BLUETOOTH_SWITCH, HIGH);
     }
 #ifdef BENCH_MODE_ON
     CAN.sendMsgBuf(CAN_POWER, 0, arrayLenght(msgPowerOn), msgPowerOn);
-    delay(25);
+    delay (10);
 #endif
   }
   // Сhange audio source then bluetooth receive a call.
@@ -357,6 +355,7 @@ void loop() {
       CAN.sendMsgBuf(CAN_RADIO_DIAG, 0, arrayLenght(setRadioDiagMode1), setRadioDiagMode1);
       delay(50);
       CAN.sendMsgBuf(CAN_RADIO_DIAG, 0, arrayLenght(setVesAuxMode), setVesAuxMode);
+      delay (10);
       Serial.println("Incoming Call");
     }
     ringTime = millis();
