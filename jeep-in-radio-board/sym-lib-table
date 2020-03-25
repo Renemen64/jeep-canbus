@@ -1,3 +1,0 @@
-(sym_lib_table
-  (lib (name jeep-radio-rescue)(type Legacy)(uri ${KIPRJMOD}/jeep-radio-rescue.lib)(options "")(descr ""))
-)
